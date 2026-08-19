@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Resume Upload</title>
+<style>
+  body {
+    font-family: -apple-system, Arial, sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .card {
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 400px;
+    text-align: center;
+  }
+  h2 { margin-top: 0; }
+  select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+  .dropzone {
+    border: 2px dashed #999;
+    border-radius: 10px;
+    padding: 40px 20px;
+    color: #666;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .dropzone.dragover {
+    background: #eef6ff;
+    border-color: #3388ff;
+  }
+  .status {
+    margin-top: 16px;
+    font-size: 14px;
+    min-height: 20px;
+  }
+  .status.error { color: #cc3333; }
+  .status.success { color: #2a8f2a; }
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Upload resume</h2>
+
+  <select id="company">
+    <option value="companyA">Company A</option>
+    <option value="companyB">Company B</option>
+  </select>
+
+  <div class="dropzone" id="dropzone">
+    Drag and drop a resume here<br>or click to choose a file
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx">
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const API_URL = "https://8nmyzbx4tj.execute-api.us-east-1.amazonaws.com/get-upload-url";
+
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const statusEl = document.getElementById("status");
+const companySelect = document.getElementById("company");
+
+dropzone.addEventListener("click", () => fileInput.click());
+
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("dragover");
+});
+
+dropzone.addEventListener("dragleave", () => {
+  dropzone.classList.remove("dragover");
+});
+
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+});
+
+async function handleFile(file) {
+  const company = companySelect.value;
+  statusEl.className = "status";
+  statusEl.textContent = "Requesting upload link...";
+
+  try {
+    const res = await fetch(`${API_URL}?filename=${encodeURIComponent(file.name)}&company=${company}`);
+    if (!res.ok) throw new Error("Failed to get upload URL");
+    const { upload_url } = await res.json();
+
+    statusEl.textContent = "Uploading " + file.name + "...";
+
+    const uploadRes = await fetch(upload_url, {
+      method: "PUT",
+      body: file
+    });
+
+    if (!uploadRes.ok) throw new Error("Upload failed");
+
+    statusEl.className = "status success";
+    statusEl.textContent = "Uploaded successfully: " + file.name;
+  } catch (err) {
+    statusEl.className = "status error";
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+</script>
+
+</body>
+</html>
