@@ -22,13 +22,6 @@
     text-align: center;
   }
   h2 { margin-top: 0; }
-  select {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 16px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-  }
   .dropzone {
     border: 2px dashed #999;
     border-radius: 10px;
@@ -56,11 +49,6 @@
 <div class="card">
   <h2>Upload resume</h2>
 
-  <select id="company">
-    <option value="companyA">Company A</option>
-    <option value="companyB">Company B</option>
-  </select>
-
   <div class="dropzone" id="dropzone">
     Drag and drop a resume here<br>or click to choose a file
     <input type="file" id="fileInput" accept=".pdf,.doc,.docx">
@@ -75,7 +63,6 @@ const API_URL = "https://8nmyzbx4tj.execute-api.us-east-1.amazonaws.com/get-uplo
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("fileInput");
 const statusEl = document.getElementById("status");
-const companySelect = document.getElementById("company");
 
 dropzone.addEventListener("click", () => fileInput.click());
 
@@ -101,12 +88,11 @@ fileInput.addEventListener("change", (e) => {
 });
 
 async function handleFile(file) {
-  const company = companySelect.value;
   statusEl.className = "status";
   statusEl.textContent = "Requesting upload link...";
 
   try {
-    const res = await fetch(`${API_URL}?filename=${encodeURIComponent(file.name)}&company=${company}`);
+    const res = await fetch(`${API_URL}?filename=${encodeURIComponent(file.name)}`);
     if (!res.ok) throw new Error("Failed to get upload URL");
     const { upload_url } = await res.json();
 
