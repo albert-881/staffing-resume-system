@@ -88,6 +88,18 @@ fileInput.addEventListener("change", (e) => {
 });
 
 async function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    statusEl.className = "status error";
+    statusEl.textContent = "Only PDF files are supported.";
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) { // 10MB
+    statusEl.className = "status error";
+    statusEl.textContent = "File is too large (max 10MB).";
+    return;
+  }
+
   statusEl.className = "status";
   statusEl.textContent = "Requesting upload link...";
 
