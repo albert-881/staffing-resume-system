@@ -37,10 +37,17 @@
   .status {
     margin-top: 16px;
     font-size: 14px;
-    min-height: 20px;
+    text-align: left;
+    max-height: 240px;
+    overflow-y: auto;
   }
-  .status.error { color: #cc3333; }
-  .status.success { color: #2a8f2a; }
+  .status div {
+    padding: 4px 0;
+    word-break: break-all;
+  }
+  .status .error { color: #cc3333; }
+  .status .success { color: #2a8f2a; }
+  .status .pending { color: #666; }
   input[type="file"] { display: none; }
 </style>
 </head>
@@ -50,8 +57,8 @@
   <h2>Upload resume</h2>
 
   <div class="dropzone" id="dropzone">
-    Drag and drop a resume here<br>or click to choose a file
-    <input type="file" id="fileInput" accept=".pdf,.doc,.docx">
+    Drag and drop resumes here<br>or click to choose files
+    <input type="file" id="fileInput" accept=".pdf" multiple>
   </div>
 
   <div class="status" id="status"></div>
@@ -78,37 +85,51 @@ dropzone.addEventListener("dragleave", () => {
 dropzone.addEventListener("drop", (e) => {
   e.preventDefault();
   dropzone.classList.remove("dragover");
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
+  handleFiles(e.dataTransfer.files);
 });
 
 fileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) handleFile(file);
+  handleFiles(e.target.files);
+  fileInput.value = ""; // lets the same files be chosen again later
 });
+
+async function handleFiles(fileList) {
+  const files = Array.from(fileList);
+  if (files.length === 0) return;
+
+  statusEl.innerHTML = "";
+
+  // Upload one at a time so a big batch doesn't hit the API all at once
+  for (const file of files) {
+    await handleFile(file);
+  }
+}
+
+function addStatusLine(text, cls) {
+  const line = document.createElement("div");
+  line.className = cls;
+  line.textContent = text;
+  statusEl.appendChild(line);
+  return line;
+}
 
 async function handleFile(file) {
   if (!file.name.toLowerCase().endsWith('.pdf')) {
-    statusEl.className = "status error";
-    statusEl.textContent = "Only PDF files are supported.";
+    addStatusLine(file.name + ": only PDF files are supported.", "error");
     return;
   }
 
   if (file.size > 10 * 1024 * 1024) { // 10MB
-    statusEl.className = "status error";
-    statusEl.textContent = "File is too large (max 10MB).";
+    addStatusLine(file.name + ": file is too large (max 10MB).", "error");
     return;
   }
 
-  statusEl.className = "status";
-  statusEl.textContent = "Requesting upload link...";
+  const line = addStatusLine("Uploading " + file.name + "...", "pending");
 
   try {
     const res = await fetch(`${API_URL}?filename=${encodeURIComponent(file.name)}`);
     if (!res.ok) throw new Error("Failed to get upload URL");
     const { upload_url } = await res.json();
-
-    statusEl.textContent = "Uploading " + file.name + "...";
 
     const uploadRes = await fetch(upload_url, {
       method: "PUT",
@@ -117,11 +138,11 @@ async function handleFile(file) {
 
     if (!uploadRes.ok) throw new Error("Upload failed");
 
-    statusEl.className = "status success";
-    statusEl.textContent = "Uploaded successfully: " + file.name;
+    line.className = "success";
+    line.textContent = "Uploaded: " + file.name;
   } catch (err) {
-    statusEl.className = "status error";
-    statusEl.textContent = "Error: " + err.message;
+    line.className = "error";
+    line.textContent = file.name + ": " + err.message;
   }
 }
 </script>
